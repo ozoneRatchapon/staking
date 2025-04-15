@@ -30,7 +30,7 @@ impl<'info> InitializeConfig<'info> {
         points_per_stake: u8,
         max_state: u8,
         freeze_period: u32,
-        bumps: InitializeConfigBumps,
+        bumps: &InitializeConfigBumps,
     ) -> Result<()> {
         self.config.set_inner(StakeConfig {
             points_per_stake: 1,

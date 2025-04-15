@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{state::UserAccount, InitializeBumps};
+use crate::state::UserAccount;
 
 #[derive(Accounts)]
 pub struct RegisterUser<'info> {
