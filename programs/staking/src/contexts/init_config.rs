@@ -14,7 +14,7 @@ pub struct InitializeConfig<'info> {
     #[account(
         init,
         payer = admin,
-        seeds = [b"rewards".as_ref(), config.key().as_ref()],
+        seeds = [b"rewards", config.key().as_ref()],
         bump,
         mint::decimals = 6,
         mint::authority = config,
@@ -28,14 +28,14 @@ impl<'info> InitializeConfig<'info> {
     pub fn init(
         &mut self,
         points_per_stake: u8,
-        max_state: u8,
+        max_stake: u8,
         freeze_period: u32,
         bumps: &InitializeConfigBumps,
     ) -> Result<()> {
         self.config.set_inner(StakeConfig {
-            points_per_stake: 1,
-            max_stake: 100,
-            freeze_period: 100,
+            points_per_stake,
+            max_stake,
+            freeze_period,
             rewards_bump: bumps.rewards_mint,
             bump: bumps.config,
         });

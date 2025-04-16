@@ -4,13 +4,13 @@ use anchor_spl::{
         mpl_token_metadata::instructions::{
             FreezeDelegatedAccountCpi, FreezeDelegatedAccountCpiAccounts,
         },
-        MasterEditionAccount, Metadata, MetadataAccount,
-        },
-        token::{approve, Approve, Mint, Token, TokenAccount},
+        FreezeDelegatedAccount, MasterEditionAccount, Metadata, MetadataAccount,
+    },
+    token::{approve, Approve, Mint, Token, TokenAccount},
 };
 
-use crate::state::{StakeAccount, StakeConfig,  UserAccount};
 use crate::error::StakeError;
+use crate::state::{StakeAccount, StakeConfig, UserAccount};
 
 #[derive(Accounts)]
 pub struct Stake<'info> {
@@ -19,7 +19,7 @@ pub struct Stake<'info> {
     pub nft_mint: Account<'info, Mint>,
 
     #[account(
-        mut, 
+        mut,
         associated_token::mint = nft_mint,
         associated_token::authority = user,
     )]
@@ -51,23 +51,23 @@ pub struct Stake<'info> {
     pub edition: Account<'info, MasterEditionAccount>,
 
     #[account(
-    seeds = [b"config".as_ref()],
-    bump = user_account.bump,   
+        seeds = [b"config".as_ref()],
+        bump = config.bump,
     )]
     pub config: Account<'info, StakeConfig>,
 
-#[account(
-    mut,
-    seeds = [
-        b"user".as_ref(),
-        user.key().as_ref(),
-    ],
-    bump = user_account.bump,
-)]
+    #[account(
+        mut,
+        seeds = [
+            b"user".as_ref(),
+            user.key().as_ref(),
+        ],
+        bump = user_account.bump,
+    )]
     pub user_account: Account<'info, UserAccount>,
 
     #[account(
-        init, 
+        init,
         payer = user,
         space = StakeAccount::INIT_SPACE+8,
         seeds = [
@@ -77,19 +77,21 @@ pub struct Stake<'info> {
         ],
         bump,
     )]
-pub stake_account: Account<'info, StakeAccount>,
+    pub stake_account: Account<'info, StakeAccount>,
 
     pub metadata_program: Program<'info, Metadata>,
     pub system_program: Program<'info, System>,
-pub token_program: Program<'info, Token>,
+    pub token_program: Program<'info, Token>,
 }
 
 impl<'info> Stake<'info> {
     pub fn stake(&mut self, bumps: &StakeBumps) -> Result<()> {
-    
-    require!(self.user_account.amount_staked < self.config.max_stake, StakeError::MaxStakeReached);
+        require!(
+            self.user_account.amount_staked <= self.config.max_stake,
+            StakeError::MaxStakeReached
+        );
 
-    self.user_account.amount_staked += 1;
+        self.user_account.amount_staked += 1;
 
         let clock = Clock::get()?;
         self.stake_account.set_inner(StakeAccount {
@@ -101,45 +103,41 @@ impl<'info> Stake<'info> {
 
         let cpi_program = self.token_program.to_account_info();
 
-        let cpi_account = Approve {
+        let cpi_accounts = Approve {
             to: self.nft_mint_ata.to_account_info(),
             delegate: self.stake_account.to_account_info(),
             authority: self.user.to_account_info(),
         };
 
-        let cpi_cpx = CpiContext::new(cpi_program, cpi_account);
+        let cpi_cpx = CpiContext::new(cpi_program, cpi_accounts);
 
         approve(cpi_cpx, 1)?;
 
         // got authority to freeze the account
 
         let cpi_program = &self.metadata_program.to_account_info();
-let token_program = &self.token_program.to_account_info();
+        let token_program = &self.token_program.to_account_info();
 
-let cpi_accounts = FreezeDelegatedAccountCpiAccounts {
-    delegate: &self.stake_account.to_account_info(),
-    token_account: &self.nft_mint_ata.to_account_info(),
-    edition: &self.edition.to_account_info(),
-    mint: &self.nft_mint.to_account_info(),
-    token_program,
-};
+        let cpi_accounts = FreezeDelegatedAccountCpiAccounts {
+            delegate: &self.stake_account.to_account_info(),
+            token_account: &self.nft_mint_ata.to_account_info(),
+            edition: &self.edition.to_account_info(),
+            mint: &self.nft_mint.to_account_info(),
+            token_program,
+        };
 
-let seeds = &[
-    b"stake_account",
-     self.nft_mint.to_account_info().key.as_ref(),
-     self.config.to_account_info().key.as_ref(),
-      &[self.stake_account.bump]
-      ];
-let signer_seeds = &[&seeds[..]];
+        let seeds = &[
+            b"stake_account",
+            self.nft_mint.to_account_info().key.as_ref(),
+            self.config.to_account_info().key.as_ref(),
+            &[self.stake_account.bump],
+        ];
+        let signer_seeds = &[&seeds[..]];
 
-        FreezeDelegatedAccountCpi::new(
-            cpi_program,
-            cpi_accounts,
-        ).invoke_signed(signer_seeds)?;
-        
-// thawDelegatedAccountCpi()
+        FreezeDelegatedAccountCpi::new(cpi_program, cpi_accounts).invoke_signed(signer_seeds)?;
 
-// revoke(token_program_id, source_pubkey, owner_pubkey, signer_pubkeys);
+        // thawDelegatedAccountCpi()
+        // revoke(token_program_id, source_pubkey, owner_pubkey, signer_pubkeys);
 
         Ok(())
     }
