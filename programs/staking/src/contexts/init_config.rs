@@ -24,7 +24,7 @@ pub struct InitializeConfig<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-impl<'info> InitializeConfig<'info> {
+impl InitializeConfig<'_> {
     pub fn init(
         &mut self,
         points_per_stake: u8,

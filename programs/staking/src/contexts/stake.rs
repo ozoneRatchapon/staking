@@ -4,7 +4,7 @@ use anchor_spl::{
         mpl_token_metadata::instructions::{
             FreezeDelegatedAccountCpi, FreezeDelegatedAccountCpiAccounts,
         },
-        FreezeDelegatedAccount, MasterEditionAccount, Metadata, MetadataAccount,
+        MasterEditionAccount, Metadata, MetadataAccount,
     },
     token::{approve, Approve, Mint, Token, TokenAccount},
 };
@@ -34,7 +34,7 @@ pub struct Stake<'info> {
         bump,
         seeds::program = metadata_program.key(),
         constraint = metadata.collection.as_ref().unwrap().key.as_ref() == collection_mint.key().as_ref(),
-        constraint = metadata.collection.as_ref().unwrap().verified == true,
+        constraint = metadata.collection.as_ref().unwrap().verified,
     )]
     pub metadata: Account<'info, MetadataAccount>,
 
@@ -84,7 +84,7 @@ pub struct Stake<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-impl<'info> Stake<'info> {
+impl Stake<'_> {
     pub fn stake(&mut self, bumps: &StakeBumps) -> Result<()> {
         require!(
             self.user_account.amount_staked <= self.config.max_stake,
@@ -97,7 +97,7 @@ impl<'info> Stake<'info> {
         self.stake_account.set_inner(StakeAccount {
             owner: self.user.key(),
             nft_mint: self.nft_mint.key(),
-            staked_at: clock.unix_timestamp as i64,
+            staked_at: clock.unix_timestamp,
             bump: bumps.stake_account,
         });
 

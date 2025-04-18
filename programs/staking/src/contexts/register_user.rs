@@ -6,12 +6,18 @@ use crate::state::UserAccount;
 pub struct RegisterUser<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
-    #[account(init, payer = user, space= UserAccount::INIT_SPACE + 8, seeds=[b"user_account", user.key().as_ref()], bump)]
+    #[account(
+        init,
+        payer = user,
+        space= UserAccount::INIT_SPACE + 8,
+        seeds=[b"user_account", user.key().as_ref()],
+        bump
+    )]
     pub user_account: Account<'info, UserAccount>,
     pub system_program: Program<'info, System>,
 }
 
-impl<'info> RegisterUser<'info> {
+impl RegisterUser<'_> {
     pub fn init(&mut self, bumps: &RegisterUserBumps) -> Result<()> {
         self.user_account.set_inner(UserAccount {
             points: 0,
